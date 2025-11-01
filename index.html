@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plist to XML Converter</title>
+<style>
+    body { font-family: monospace; padding: 20px; background: #f4f4f4; }
+    textarea { width: 100%; height: 300px; margin-top: 10px; font-family: monospace; }
+    input, button { margin-top: 10px; }
+</style>
+</head>
+<body>
+<h1>Plist → XML TextureAtlas Converter</h1>
+
+<input type="file" id="plistFile" accept=".plist">
+<br>
+<button onclick="convertPlist()">Convert</button>
+<br>
+<textarea id="output" placeholder="XML output will appear here..."></textarea>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plist/3.0.1/plist.min.js"></script>
+<script>
+function convertPlist() {
+    const fileInput = document.getElementById('plistFile');
+    if (!fileInput.files.length) return alert('Select a plist file first.');
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        let plistText = e.target.result;
+        let plistData;
+        try {
+            plistData = plist.parse(plistText);
+        } catch(err) {
+            return alert('Invalid plist file.');
+        }
+
+        const frames = plistData.frames;
+        const metadata = plistData.metadata || {};
+        const textureFile = metadata.realTextureFileName || "texture.png";
+
+        let xml = `<?xml version="1.0" encoding="utf-8"?>\n<TextureAtlas imagePath="${textureFile}">\n`;
+
+        for (let name in frames) {
+            let f = frames[name];
+            // Parse textureRect "{{x,y},{w,h}}"
+            let rect = f.textureRect.replace(/[{}]/g,'').split(',');
+            let x = rect[0], y = rect[1], width = rect[2], height = rect[3];
+
+            // Parse spriteSourceSize "{w,h}"
+            let source = f.spriteSourceSize.replace(/[{}]/g,'').split(',');
+            let frameWidth = source[0], frameHeight = source[1];
+
+            // Parse spriteOffset "{x,y}"
+            let offset = f.spriteOffset.replace(/[{}]/g,'').split(',');
+            let frameX = offset[0], frameY = offset[1];
+
+            xml += `\t<SubTexture name="${name}" x="${x}" y="${y}" width="${width}" height="${height}" frameX="${frameX}" frameY="${frameY}" frameWidth="${frameWidth}" frameHeight="${frameHeight}"/>\n`;
+        }
+
+        xml += `</TextureAtlas>`;
+        document.getElementById('output').value = xml;
+    };
+    reader.readAsText(fileInput.files[0]);
+}
+</script>
+</body>
+</html>
