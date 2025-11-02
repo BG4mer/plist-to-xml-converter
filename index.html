@@ -14,10 +14,11 @@
   body {
     background: #0d0d0d;
     color: #00ffcc;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    min-height: 100vh; padding: 20px;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    min-height: 100vh; padding: 30px;
   }
-  h1 { margin-bottom: 15px; font-size: 1.8rem; }
+  h1 { margin-bottom: 20px; font-size: 1.8rem; }
+  label { margin-top: 10px; margin-bottom: 5px; }
   textarea {
     width: 90%; height: 200px;
     background: #1a1a1a; color: #00ffcc;
@@ -30,6 +31,11 @@
   input, button {
     margin: 10px 0;
   }
+  input {
+    background: #1a1a1a; color: #00ffcc;
+    border: 1px solid #00ffcc; border-radius: 8px;
+    padding: 8px; width: 80%;
+  }
   button {
     background: #00ffcc; color: #0d0d0d;
     border: none; border-radius: 8px;
@@ -38,6 +44,10 @@
   }
   button:hover {
     background: #00ffaa;
+  }
+  .output-container {
+    display: flex; flex-direction: column; align-items: center;
+    width: 100%;
   }
 </style>
 </head>
@@ -52,13 +62,18 @@
 
 <button onclick="convertPlist()">Convert</button>
 
-<h3>Converted XML Output:</h3>
-<textarea id="xmlOutput" readonly></textarea>
+<div class="output-container">
+  <h3>Converted XML Output:</h3>
+  <textarea id="xmlOutput" readonly></textarea>
+  <button onclick="copyOutput()">Copy XML</button>
+</div>
 
 <script>
 function convertPlist() {
   const plistText = document.getElementById('plistInput').value.trim();
   const imageName = document.getElementById('imageName').value.trim();
+  const xmlOutputArea = document.getElementById("xmlOutput");
+
   if (!plistText || !imageName) {
     alert('Please paste your plist and enter the image filename!');
     return;
@@ -66,8 +81,8 @@ function convertPlist() {
 
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(plistText, "text/xml");
-
   const keys = xmlDoc.getElementsByTagName("key");
+
   let xmlOutput = `<?xml version="1.0" encoding="utf-8"?>\n<TextureAtlas imagePath="${imageName}">\n`;
 
   for (let i = 0; i < keys.length; i++) {
@@ -103,7 +118,15 @@ function convertPlist() {
   }
 
   xmlOutput += `</TextureAtlas>`;
-  document.getElementById("xmlOutput").value = xmlOutput;
+  xmlOutputArea.value = xmlOutput;
+}
+
+function copyOutput() {
+  const xmlText = document.getElementById("xmlOutput");
+  xmlText.select();
+  xmlText.setSelectionRange(0, 99999);
+  document.execCommand("copy");
+  alert("Copied to clipboard!");
 }
 </script>
 </body>
