@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Plist → XML Converter</title>
-<link rel="icon" href="icon.png" type="icon.png">
+<link rel="icon" href="favicon.ico" type="image/x-icon">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   * {
@@ -17,7 +17,7 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     min-height: 100vh; padding: 20px;
   }
-  h1 { margin-bottom: 20px; font-size: 1.8rem; }
+  h1 { margin-bottom: 15px; font-size: 1.8rem; }
   textarea {
     width: 90%; height: 200px;
     background: #1a1a1a; color: #00ffcc;
@@ -27,7 +27,7 @@
   textarea[readonly] {
     cursor: not-allowed;
   }
-  input[type=file], button {
+  input, button {
     margin: 10px 0;
   }
   button {
@@ -44,8 +44,12 @@
 <body>
 <h1>Plist → XML Converter</h1>
 
-<input type="file" id="plistFile" accept=".plist">
-<input type="file" id="imageFile" accept=".png,.jpg,.jpeg">
+<label>Paste your .plist data here:</label>
+<textarea id="plistInput" placeholder="Paste plist text here..."></textarea>
+
+<label>Enter image filename (e.g. PlayerExplosion_10-hd.png):</label>
+<input type="text" id="imageName" placeholder="Enter image filename">
+
 <button onclick="convertPlist()">Convert</button>
 
 <h3>Converted XML Output:</h3>
@@ -53,58 +57,53 @@
 
 <script>
 function convertPlist() {
-  const plistFile = document.getElementById('plistFile').files[0];
-  const imageFile = document.getElementById('imageFile').files[0];
-  if (!plistFile || !imageFile) {
-    alert('Please upload both a .plist and an image file!');
+  const plistText = document.getElementById('plistInput').value.trim();
+  const imageName = document.getElementById('imageName').value.trim();
+  if (!plistText || !imageName) {
+    alert('Please paste your plist and enter the image filename!');
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const plistText = e.target.result;
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(plistText, "text/xml");
+  const parser = new DOMParser();
+  const xmlDoc = parser.parseFromString(plistText, "text/xml");
 
-    const keys = xmlDoc.getElementsByTagName("key");
-    let xmlOutput = `<?xml version="1.0" encoding="utf-8"?>\n<TextureAtlas imagePath="${imageFile.name}">\n`;
+  const keys = xmlDoc.getElementsByTagName("key");
+  let xmlOutput = `<?xml version="1.0" encoding="utf-8"?>\n<TextureAtlas imagePath="${imageName}">\n`;
 
-    for (let i = 0; i < keys.length; i++) {
-      const keyName = keys[i].textContent;
-      const dict = keys[i].nextElementSibling;
-      if (dict && dict.tagName === "dict") {
-        let x = 0, y = 0, width = 0, height = 0, frameX = 0, frameY = 0, frameWidth = 0, frameHeight = 0;
-        const dKeys = dict.getElementsByTagName("key");
-        for (let j = 0; j < dKeys.length; j++) {
-          const name = dKeys[j].textContent;
-          const val = dKeys[j].nextElementSibling?.textContent?.replace(/[{}]/g, "").split(",");
-          if (!val) continue;
-          switch (name) {
-            case "frame":
-            case "textureRect":
-              x = val[0].replace(/[^\d.-]/g, "");
-              y = val[1].replace(/[^\d.-]/g, "");
-              width = val[2].replace(/[^\d.-]/g, "");
-              height = val[3].replace(/[^\d.-]/g, "");
-              break;
-            case "sourceSize":
-              frameWidth = val[0].replace(/[^\d.-]/g, "");
-              frameHeight = val[1].replace(/[^\d.-]/g, "");
-              break;
-            case "offset":
-              frameX = val[0].replace(/[^\d.-]/g, "");
-              frameY = val[1].replace(/[^\d.-]/g, "");
-              break;
-          }
+  for (let i = 0; i < keys.length; i++) {
+    const keyName = keys[i].textContent;
+    const dict = keys[i].nextElementSibling;
+    if (dict && dict.tagName === "dict") {
+      let x = 0, y = 0, width = 0, height = 0, frameX = 0, frameY = 0, frameWidth = 0, frameHeight = 0;
+      const dKeys = dict.getElementsByTagName("key");
+      for (let j = 0; j < dKeys.length; j++) {
+        const name = dKeys[j].textContent;
+        const val = dKeys[j].nextElementSibling?.textContent?.replace(/[{}]/g, "").split(",");
+        if (!val) continue;
+        switch (name) {
+          case "frame":
+          case "textureRect":
+            x = val[0].replace(/[^\d.-]/g, "");
+            y = val[1].replace(/[^\d.-]/g, "");
+            width = val[2].replace(/[^\d.-]/g, "");
+            height = val[3].replace(/[^\d.-]/g, "");
+            break;
+          case "sourceSize":
+            frameWidth = val[0].replace(/[^\d.-]/g, "");
+            frameHeight = val[1].replace(/[^\d.-]/g, "");
+            break;
+          case "offset":
+            frameX = val[0].replace(/[^\d.-]/g, "");
+            frameY = val[1].replace(/[^\d.-]/g, "");
+            break;
         }
-        xmlOutput += `\t<SubTexture name="${keyName}" x="${x}" y="${y}" width="${width}" height="${height}" frameX="${frameX}" frameY="${frameY}" frameWidth="${frameWidth}" frameHeight="${frameHeight}"/>\n`;
       }
+      xmlOutput += `\t<SubTexture name="${keyName}" x="${x}" y="${y}" width="${width}" height="${height}" frameX="${frameX}" frameY="${frameY}" frameWidth="${frameWidth}" frameHeight="${frameHeight}"/>\n`;
     }
+  }
 
-    xmlOutput += `</TextureAtlas>`;
-    document.getElementById("xmlOutput").value = xmlOutput;
-  };
-  reader.readAsText(plistFile);
+  xmlOutput += `</TextureAtlas>`;
+  document.getElementById("xmlOutput").value = xmlOutput;
 }
 </script>
 </body>
