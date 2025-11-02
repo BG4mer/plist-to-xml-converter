@@ -13,28 +13,43 @@
 body {
     margin: 0;
     font-family: 'Orbitron', sans-serif;
-    background: linear-gradient(135deg, #0a0a1f, #1a1a33);
+    background: radial-gradient(circle at top, #0a0a1f, #05051a);
     color: #00ffea;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
-    min-height: 100vh;
-    padding: 20px;
+    padding: 30px;
     overflow-x: hidden;
 }
 
 h1 {
-    font-weight: 700;
-    font-size: 2.2em;
-    margin-bottom: 25px;
+    font-size: 2.5em;
+    text-align: center;
     color: #00ffea;
     text-shadow: 0 0 20px #00ffe1, 0 0 40px #00ffe1;
+    margin-bottom: 40px;
 }
 
-textarea, pre code {
-    width: 90%;
-    max-width: 950px;
+.neon-card {
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px solid #00ffea;
+    border-radius: 20px;
+    padding: 20px;
+    width: 95%;
+    max-width: 1000px;
+    box-shadow: 0 0 25px #00ffea, inset 0 0 15px #00ffea;
+    backdrop-filter: blur(10px);
+    margin-bottom: 30px;
+    transition: all 0.3s ease;
+}
+
+.neon-card:hover {
+    box-shadow: 0 0 50px #00ffea, inset 0 0 25px #00ffea;
+}
+
+textarea {
+    width: 100%;
+    height: 220px;
     background: #111122;
     border: 2px solid #00ffea;
     border-radius: 14px;
@@ -43,90 +58,142 @@ textarea, pre code {
     font-family: 'Courier New', monospace;
     font-size: 14px;
     resize: none;
-    margin-bottom: 20px;
     box-shadow: 0 0 15px #00ffea;
 }
 
 textarea:focus {
     outline: none;
-    box-shadow: 0 0 25px #00ffea;
+    box-shadow: 0 0 30px #00ffea;
 }
 
 button {
     background: linear-gradient(45deg, #00ffea, #004466);
     border: none;
-    padding: 12px 28px;
-    margin: 5px;
-    border-radius: 12px;
+    padding: 14px 30px;
+    margin: 10px;
+    border-radius: 16px;
     font-weight: bold;
     color: #111122;
     cursor: pointer;
     font-family: 'Orbitron', sans-serif;
     text-transform: uppercase;
-    transition: all 0.25s ease;
-    box-shadow: 0 0 15px #00ffea, 0 0 25px #00ffea inset;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 20px #00ffea, 0 0 30px #00ffea inset;
 }
 
 button:hover {
-    transform: scale(1.08);
-    box-shadow: 0 0 30px #00ffea, 0 0 40px #00ffea inset;
-}
-
-#outputContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
+    transform: scale(1.1) rotate(-1deg);
+    box-shadow: 0 0 50px #00ffea, 0 0 50px #00ffea inset;
 }
 
 pre {
-    width: 90%;
-    max-width: 950px;
+    width: 100%;
     height: 350px;
-    overflow-y: auto;
     background: #111122;
     border: 2px solid #00ffea;
     border-radius: 14px;
     padding: 15px;
     font-size: 14px;
-    box-shadow: 0 0 15px #00ffea;
+    overflow-y: auto;
+    box-shadow: 0 0 25px #00ffea, inset 0 0 20px #00ffea;
+    scrollbar-width: thin;
+    scrollbar-color: #00ffea #111122;
+}
+
+pre::-webkit-scrollbar {
+    width: 12px;
+}
+
+pre::-webkit-scrollbar-track {
+    background: #111122;
+}
+
+pre::-webkit-scrollbar-thumb {
+    background: #00ffea;
+    border-radius: 10px;
 }
 
 code {
     display: block;
     white-space: pre-wrap;
 }
+#backgroundCanvas {
+    position: fixed;
+    top:0; left:0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+}
 </style>
 </head>
 <body>
 
+<canvas id="backgroundCanvas"></canvas>
+
 <h1>Plist → XML Converter</h1>
 
-<textarea id="inputPlist" placeholder="Paste your .plist content here..."></textarea>
+<div class="neon-card">
+    <textarea id="inputPlist" placeholder="Paste your .plist content here..."></textarea>
+</div>
 
-<div>
+<div class="neon-card" style="text-align:center;">
     <button onclick="convertPlist()">Convert</button>
     <button onclick="copyOutput()">Copy XML</button>
     <button onclick="downloadXML()">Download XML</button>
 </div>
 
-<div id="outputContainer">
+<div class="neon-card">
     <pre><code id="outputXML" class="xml"></code></pre>
 </div>
 
 <script>
+// Futuristic particle background
+const canvas = document.getElementById('backgroundCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let particles = [];
+for (let i = 0; i < 120; i++) {
+    particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 2 + 1,
+        dx: (Math.random() - 0.5) * 0.5,
+        dy: (Math.random() - 0.5) * 0.5
+    });
+}
+
+function animateParticles() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,255,234,0.7)';
+        ctx.fill();
+        p.x += p.dx;
+        p.y += p.dy;
+
+        if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+    });
+    requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+});
+
+// Plist → XML conversion
 function convertPlist() {
     const plistText = document.getElementById('inputPlist').value;
-    if (!plistText) {
-        alert('Paste your plist first!');
-        return;
-    }
+    if (!plistText) { alert('Paste your plist first!'); return; }
 
-    // Extract image name
     const imageMatch = plistText.match(/<key>realTextureFileName<\/key>\s*<string>(.*?)<\/string>/);
     const imageName = imageMatch ? imageMatch[1] : 'PlayerExplosion.png';
 
-    // Extract frames
     const frameRegex = /<key>(.*?)<\/key>\s*<dict>([\s\S]*?)<\/dict>/g;
     let match;
     let xmlOutput = `<?xml version="1.0" encoding="utf-8"?>\n<TextureAtlas imagePath="${imageName}">\n`;
@@ -135,9 +202,7 @@ function convertPlist() {
         const frameName = match[1].replace('.png','');
         const dictContent = match[2];
 
-        const rectMatch = dictContent.match(/<key>textureRect<\/key>\s*<string>{{(\d+),(\d+)}{,}?(\d+),(\d+)}}/) 
-                         || dictContent.match(/<key>textureRect<\/key>\s*<string>{{(\d+),(\d+)},{(\d+),(\d+)}}/);
-
+        const rectMatch = dictContent.match(/<key>textureRect<\/key>\s*<string>{{(\d+),(\d+)},{(\d+),(\d+)}}/);
         const sourceMatch = dictContent.match(/<key>spriteSourceSize<\/key>\s*<string>{(\d+),(\d+)}/);
 
         if (rectMatch && sourceMatch) {
