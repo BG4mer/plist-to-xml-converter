@@ -4,78 +4,119 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Plist → XML Converter</title>
-<link rel="shortcut icon" type="image/png" href="./icon.png">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="icon" href="https://github.githubassets.com/favicons/favicon.svg" type="image/svg+xml">
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; font-family:"Space Mono", monospace; }
-  body { background:#0e0e0e; color:#eee; display:flex; flex-direction:column; align-items:center; min-height:100vh; padding:20px; }
-  h1 { font-size:24px; margin-bottom:20px; color:#00ffff; }
-  textarea { width:90%; max-width:700px; height:200px; background:#1a1a1a; color:#00ffcc; border:1px solid #333; border-radius:6px; padding:10px; margin:10px 0; }
-  button { padding:10px 25px; background:#00ffff; color:#000; font-weight:bold; border:none; border-radius:6px; cursor:pointer; margin:5px; transition:0.2s; }
-  button:hover { background:#00cccc; }
-  pre { background:#1a1a1a; color:#0f0; width:90%; max-width:700px; padding:10px; border-radius:6px; white-space:pre-wrap; word-wrap:break-word; }
+  body {
+    font-family: 'Space Mono', monospace;
+    background: #0a0a0a;
+    color: #00ff99;
+    padding: 30px;
+    text-align: center;
+  }
+  h2 { color: #00ffaa; font-size: 1.5em; margin-bottom: 15px; }
+  textarea {
+    width: 95%;
+    height: 250px;
+    margin: 10px 0;
+    background: #111;
+    color: #00ff99;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 10px;
+    resize: vertical;
+  }
+  button {
+    background: #00ff99;
+    color: #000;
+    border: none;
+    padding: 10px 15px;
+    margin: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    border-radius: 6px;
+    transition: background 0.2s;
+  }
+  button:hover { background: #00cc77; }
+  footer {
+    margin-top: 15px;
+    color: #777;
+    font-size: 0.8em;
+  }
 </style>
 </head>
 <body>
-  <h1>Plist → XML Converter</h1>
-  <textarea id="plistInput" placeholder="Paste your .plist content here..."></textarea>
-  <div>
-    <button id="convertBtn">Convert</button>
-    <button id="copyBtn">Copy Output</button>
-  </div>
-  <pre id="xmlOutput" placeholder="Converted XML will appear here..."></pre>
+<h2>Plist → XML Converter</h2>
+<input type="file" id="plistFile" accept=".plist" style="margin-bottom: 10px;">
+<br>
+<textarea id="plistInput" placeholder="Or paste your .plist content here..."></textarea><br>
+<button onclick="convert()">Convert</button>
+<button onclick="copyOutput()">Copy XML</button>
+<textarea id="xmlOutput" placeholder="Converted XML will appear here..."></textarea>
+<footer>Made for GitHub Pages — works entirely offline.</footer>
 
 <script>
-document.getElementById("convertBtn").addEventListener("click", () => {
-  const input = document.getElementById("plistInput").value.trim();
-  if (!input) return alert("Please paste a .plist file first!");
+function convert() {
+  const fileInput = document.getElementById('plistFile');
+  const plistText = document.getElementById('plistInput').value;
+  let plist = plistText.trim();
 
-  try {
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(input, "text/xml");
+  if (fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      plist = e.target.result;
+      processPlist(plist, file.name);
+    };
+    reader.readAsText(file);
+  } else {
+    processPlist(plist, 'spritesheet.plist');
+  }
+}
 
-    const keys = xmlDoc.getElementsByTagName("key");
-    const plistName = (input.match(/<string>([^<]*?)\.png<\/string>/) || [])[1] || "spritesheet";
-    const imagePath = `${plistName}.png`;
+function processPlist(plist, filename) {
+  if (!plist) return alert("Paste or upload a .plist first!");
+  
+  const imageName = filename.replace('.plist', '.png');
+  const lines = plist.split('\n');
+  let output = `<?xml version="1.0" encoding="utf-8"?>\n<TextureAtlas imagePath="${imageName}">\n`;
 
-    let output = `<?xml version="1.0" encoding="utf-8"?> \n<TextureAtlas imagePath="${imagePath}">\n`;
-
-    for (let i = 0; i < keys.length; i++) {
-      const key = keys[i];
-      const name = key.textContent;
-      const next = key.nextElementSibling;
-      if (next && next.tagName === "dict") {
-        const getVal = (k) => {
-          const el = [...next.getElementsByTagName("key")].find(e => e.textContent === k);
-          if (el && el.nextElementSibling) return el.nextElementSibling.textContent;
-          return "";
-        };
-
-        const texRect = getVal("textureRect").replace(/[{}]/g, "").split(",");
-        const srcSize = getVal("spriteSourceSize").replace(/[{}]/g, "").split(",");
-        if (texRect.length < 4 || srcSize.length < 2) continue;
-
-        const [x, y, w, h] = texRect.map(v => parseInt(v));
-        const [fw, fh] = srcSize.map(v => parseInt(v));
-
-        const cleanName = name.replace(".png", "");
-        output += `\t<SubTexture name="${cleanName}" x="${x}" y="${y}" width="${w}" height="${h}" frameX="0" frameY="0" frameWidth="${fw}" frameHeight="${fh}"/>\n`;
+  for (let line of lines) {
+    if (line.includes('<key>') && line.includes('.png')) {
+      const name = line.match(/<key>(.*?)<\/key>/)?.[1];
+      if (name) {
+        const cleanName = name.replace('.png', '');
+        const x = getNextValue(lines, line, 'x');
+        const y = getNextValue(lines, line, 'y');
+        const width = getNextValue(lines, line, 'width');
+        const height = getNextValue(lines, line, 'height');
+        const frameX = 0, frameY = 0, frameWidth = 234, frameHeight = 234;
+        output += `\t<SubTexture name="${cleanName}" x="${x}" y="${y}" width="${width}" height="${height}" frameX="${frameX}" frameY="${frameY}" frameWidth="${frameWidth}" frameHeight="${frameHeight}"/>\n`;
       }
     }
-
-    output += `</TextureAtlas>`;
-    document.getElementById("xmlOutput").textContent = output;
-  } catch (err) {
-    alert("Error converting plist. Make sure it's valid XML.");
   }
-});
 
-document.getElementById("copyBtn").addEventListener("click", () => {
-  const text = document.getElementById("xmlOutput").textContent;
-  if (!text.trim()) return alert("Nothing to copy!");
-  navigator.clipboard.writeText(text);
-  alert("XML copied to clipboard!");
-});
+  output += '</TextureAtlas>';
+  document.getElementById('xmlOutput').value = output;
+}
+
+function getNextValue(lines, currentLine, key) {
+  const index = lines.indexOf(currentLine);
+  for (let i = index; i < lines.length; i++) {
+    if (lines[i].includes(`<key>${key}</key>`)) {
+      const next = lines[i + 1];
+      const val = next?.match(/<integer>(.*?)<\/integer>/)?.[1] || 0;
+      return val;
+    }
+  }
+  return 0;
+}
+
+function copyOutput() {
+  const text = document.getElementById('xmlOutput');
+  text.select();
+  document.execCommand('copy');
+  alert('XML copied to clipboard!');
+}
 </script>
 </body>
 </html>
