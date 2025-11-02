@@ -46,8 +46,7 @@
 </head>
 <body>
 <h2>Plist → XML Converter</h2>
-<input type="file" id="plistFile" accept=".plist" style="margin-bottom: 10px;">
-<br>
+<input type="file" id="plistFile" accept=".plist" style="margin-bottom: 10px;"><br>
 <textarea id="plistInput" placeholder="Or paste your .plist content here..."></textarea><br>
 <button onclick="convert()">Convert</button>
 <button onclick="copyOutput()">Copy XML</button>
@@ -57,55 +56,62 @@
 <script>
 function convert() {
   const fileInput = document.getElementById('plistFile');
-  const plistText = document.getElementById('plistInput').value;
-  let plist = plistText.trim();
-
+  const plistText = document.getElementById('plistInput').value.trim();
+  
   if (fileInput.files.length > 0) {
     const file = fileInput.files[0];
     const reader = new FileReader();
     reader.onload = function(e) {
-      plist = e.target.result;
-      processPlist(plist, file.name);
+      processPlist(e.target.result);
     };
     reader.readAsText(file);
+  } else if (plistText.length > 0) {
+    processPlist(plistText);
   } else {
-    processPlist(plist, 'spritesheet.plist');
+    alert("Upload or paste a .plist file first!");
   }
 }
 
-function processPlist(plist, filename) {
-  if (!plist) return alert("Paste or upload a .plist first!");
-  
-  const imageName = filename.replace('.plist', '.png');
+function processPlist(plist) {
   const lines = plist.split('\n');
-  let output = `<?xml version="1.0" encoding="utf-8"?>\n<TextureAtlas imagePath="${imageName}">\n`;
-
-  for (let line of lines) {
-    if (line.includes('<key>') && line.includes('.png')) {
-      const name = line.match(/<key>(.*?)<\/key>/)?.[1];
-      if (name) {
-        const cleanName = name.replace('.png', '');
-        const x = getNextValue(lines, line, 'x');
-        const y = getNextValue(lines, line, 'y');
-        const width = getNextValue(lines, line, 'width');
-        const height = getNextValue(lines, line, 'height');
-        const frameX = 0, frameY = 0, frameWidth = 234, frameHeight = 234;
-        output += `\t<SubTexture name="${cleanName}" x="${x}" y="${y}" width="${width}" height="${height}" frameX="${frameX}" frameY="${frameY}" frameWidth="${frameWidth}" frameHeight="${frameHeight}"/>\n`;
-      }
+  
+  // Try to detect texture name from plist
+  let imageName = "spritesheet.png";
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes("<key>textureFileName</key>")) {
+      const match = lines[i + 1]?.match(/<string>(.*?)<\/string>/);
+      if (match) imageName = match[1];
+      break;
     }
   }
 
-  output += '</TextureAtlas>';
+  let output = `<?xml version="1.0" encoding="utf-8"?> \n<TextureAtlas imagePath="${imageName}">\n`;
+
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes("<key>") && lines[i].includes(".png</key>")) {
+      const nameMatch = lines[i].match(/<key>(.*?)<\/key>/);
+      if (!nameMatch) continue;
+      const cleanName = nameMatch[1].replace(".png", "");
+
+      const x = getValue(lines, i, "x");
+      const y = getValue(lines, i, "y");
+      const width = getValue(lines, i, "width");
+      const height = getValue(lines, i, "height");
+      const frameX = 0, frameY = 0, frameWidth = 234, frameHeight = 234;
+
+      output += `\t<SubTexture name="${cleanName}" x="${x}" y="${y}" width="${width}" height="${height}" frameX="${frameX}" frameY="${frameY}" frameWidth="${frameWidth}" frameHeight="${frameHeight}"/>\n`;
+    }
+  }
+
+  output += "</TextureAtlas>";
   document.getElementById('xmlOutput').value = output;
 }
 
-function getNextValue(lines, currentLine, key) {
-  const index = lines.indexOf(currentLine);
+function getValue(lines, index, key) {
   for (let i = index; i < lines.length; i++) {
     if (lines[i].includes(`<key>${key}</key>`)) {
-      const next = lines[i + 1];
-      const val = next?.match(/<integer>(.*?)<\/integer>/)?.[1] || 0;
-      return val;
+      const match = lines[i + 1]?.match(/<integer>(.*?)<\/integer>/);
+      return match ? match[1] : 0;
     }
   }
   return 0;
