@@ -4,124 +4,107 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Plist → XML Converter</title>
-<link rel="icon" href="https://github.githubassets.com/favicons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icon.png" type="icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
-  body {
+  * {
+    margin: 0; padding: 0; box-sizing: border-box;
     font-family: 'Space Mono', monospace;
-    background: #0a0a0a;
-    color: #00ff99;
-    padding: 30px;
-    text-align: center;
   }
-  h2 { color: #00ffaa; font-size: 1.5em; margin-bottom: 15px; }
+  body {
+    background: #0d0d0d;
+    color: #00ffcc;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  h1 { margin-bottom: 20px; font-size: 1.8rem; }
   textarea {
-    width: 95%;
-    height: 250px;
+    width: 90%; height: 200px;
+    background: #1a1a1a; color: #00ffcc;
+    border: 1px solid #00ffcc; border-radius: 10px;
+    resize: none; padding: 10px;
+  }
+  textarea[readonly] {
+    cursor: not-allowed;
+  }
+  input[type=file], button {
     margin: 10px 0;
-    background: #111;
-    color: #00ff99;
-    border: 1px solid #333;
-    border-radius: 6px;
-    padding: 10px;
-    resize: vertical;
   }
   button {
-    background: #00ff99;
-    color: #000;
-    border: none;
-    padding: 10px 15px;
-    margin: 5px;
-    cursor: pointer;
-    font-weight: bold;
-    border-radius: 6px;
-    transition: background 0.2s;
+    background: #00ffcc; color: #0d0d0d;
+    border: none; border-radius: 8px;
+    padding: 10px 20px; font-weight: bold;
+    cursor: pointer; transition: 0.3s;
   }
-  button:hover { background: #00cc77; }
-  footer {
-    margin-top: 15px;
-    color: #777;
-    font-size: 0.8em;
+  button:hover {
+    background: #00ffaa;
   }
 </style>
 </head>
 <body>
-<h2>Plist → XML Converter</h2>
-<input type="file" id="plistFile" accept=".plist" style="margin-bottom: 10px;"><br>
-<textarea id="plistInput" placeholder="Or paste your .plist content here..."></textarea><br>
-<button onclick="convert()">Convert</button>
-<button onclick="copyOutput()">Copy XML</button>
-<textarea id="xmlOutput" placeholder="Converted XML will appear here..."></textarea>
-<footer>Made for GitHub Pages — works entirely offline.</footer>
+<h1>Plist → XML Converter</h1>
+
+<input type="file" id="plistFile" accept=".plist">
+<input type="file" id="imageFile" accept=".png,.jpg,.jpeg">
+<button onclick="convertPlist()">Convert</button>
+
+<h3>Converted XML Output:</h3>
+<textarea id="xmlOutput" readonly></textarea>
 
 <script>
-function convert() {
-  const fileInput = document.getElementById('plistFile');
-  const plistText = document.getElementById('plistInput').value.trim();
-  
-  if (fileInput.files.length > 0) {
-    const file = fileInput.files[0];
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      processPlist(e.target.result);
-    };
-    reader.readAsText(file);
-  } else if (plistText.length > 0) {
-    processPlist(plistText);
-  } else {
-    alert("Upload or paste a .plist file first!");
+function convertPlist() {
+  const plistFile = document.getElementById('plistFile').files[0];
+  const imageFile = document.getElementById('imageFile').files[0];
+  if (!plistFile || !imageFile) {
+    alert('Please upload both a .plist and an image file!');
+    return;
   }
-}
 
-function processPlist(plist) {
-  const lines = plist.split('\n');
-  
-  // Try to detect texture name from plist
-  let imageName = "spritesheet.png";
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes("<key>textureFileName</key>")) {
-      const match = lines[i + 1]?.match(/<string>(.*?)<\/string>/);
-      if (match) imageName = match[1];
-      break;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const plistText = e.target.result;
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(plistText, "text/xml");
+
+    const keys = xmlDoc.getElementsByTagName("key");
+    let xmlOutput = `<?xml version="1.0" encoding="utf-8"?>\n<TextureAtlas imagePath="${imageFile.name}">\n`;
+
+    for (let i = 0; i < keys.length; i++) {
+      const keyName = keys[i].textContent;
+      const dict = keys[i].nextElementSibling;
+      if (dict && dict.tagName === "dict") {
+        let x = 0, y = 0, width = 0, height = 0, frameX = 0, frameY = 0, frameWidth = 0, frameHeight = 0;
+        const dKeys = dict.getElementsByTagName("key");
+        for (let j = 0; j < dKeys.length; j++) {
+          const name = dKeys[j].textContent;
+          const val = dKeys[j].nextElementSibling?.textContent?.replace(/[{}]/g, "").split(",");
+          if (!val) continue;
+          switch (name) {
+            case "frame":
+            case "textureRect":
+              x = val[0].replace(/[^\d.-]/g, "");
+              y = val[1].replace(/[^\d.-]/g, "");
+              width = val[2].replace(/[^\d.-]/g, "");
+              height = val[3].replace(/[^\d.-]/g, "");
+              break;
+            case "sourceSize":
+              frameWidth = val[0].replace(/[^\d.-]/g, "");
+              frameHeight = val[1].replace(/[^\d.-]/g, "");
+              break;
+            case "offset":
+              frameX = val[0].replace(/[^\d.-]/g, "");
+              frameY = val[1].replace(/[^\d.-]/g, "");
+              break;
+          }
+        }
+        xmlOutput += `\t<SubTexture name="${keyName}" x="${x}" y="${y}" width="${width}" height="${height}" frameX="${frameX}" frameY="${frameY}" frameWidth="${frameWidth}" frameHeight="${frameHeight}"/>\n`;
+      }
     }
-  }
 
-  let output = `<?xml version="1.0" encoding="utf-8"?> \n<TextureAtlas imagePath="${imageName}">\n`;
-
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes("<key>") && lines[i].includes(".png</key>")) {
-      const nameMatch = lines[i].match(/<key>(.*?)<\/key>/);
-      if (!nameMatch) continue;
-      const cleanName = nameMatch[1].replace(".png", "");
-
-      const x = getValue(lines, i, "x");
-      const y = getValue(lines, i, "y");
-      const width = getValue(lines, i, "width");
-      const height = getValue(lines, i, "height");
-      const frameX = 0, frameY = 0, frameWidth = 234, frameHeight = 234;
-
-      output += `\t<SubTexture name="${cleanName}" x="${x}" y="${y}" width="${width}" height="${height}" frameX="${frameX}" frameY="${frameY}" frameWidth="${frameWidth}" frameHeight="${frameHeight}"/>\n`;
-    }
-  }
-
-  output += "</TextureAtlas>";
-  document.getElementById('xmlOutput').value = output;
-}
-
-function getValue(lines, index, key) {
-  for (let i = index; i < lines.length; i++) {
-    if (lines[i].includes(`<key>${key}</key>`)) {
-      const match = lines[i + 1]?.match(/<integer>(.*?)<\/integer>/);
-      return match ? match[1] : 0;
-    }
-  }
-  return 0;
-}
-
-function copyOutput() {
-  const text = document.getElementById('xmlOutput');
-  text.select();
-  document.execCommand('copy');
-  alert('XML copied to clipboard!');
+    xmlOutput += `</TextureAtlas>`;
+    document.getElementById("xmlOutput").value = xmlOutput;
+  };
+  reader.readAsText(plistFile);
 }
 </script>
 </body>
