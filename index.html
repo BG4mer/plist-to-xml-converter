@@ -6,67 +6,137 @@
 <title>Plist → XML Converter</title>
 <link rel="icon" href="favicon.ico" type="image/x-icon">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
 <style>
   * {
     margin: 0; padding: 0; box-sizing: border-box;
     font-family: 'Space Mono', monospace;
   }
   body {
-    background: #0d0d0d;
-    color: #00ffcc;
-    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    background: radial-gradient(circle at center, #020617 0%, #000 80%);
+    color: #00fff2;
+    display: flex; flex-direction: column; align-items: center;
     min-height: 100vh; padding: 30px;
+    overflow-x: hidden;
   }
-  h1 { margin-bottom: 20px; font-size: 1.8rem; }
-  label { margin-top: 10px; margin-bottom: 5px; }
-  textarea {
-    width: 90%; height: 200px;
-    background: #1a1a1a; color: #00ffcc;
-    border: 1px solid #00ffcc; border-radius: 10px;
-    resize: none; padding: 10px;
+
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+    background: linear-gradient(90deg, #00fff2, #00ffaa, #00aaff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 20px rgba(0,255,255,0.4);
   }
+
+  label {
+    margin-top: 10px;
+    margin-bottom: 5px;
+    color: #00e0ff;
+    text-shadow: 0 0 8px #00e0ff;
+  }
+
+  textarea, input {
+    width: 90%;
+    background: rgba(15, 15, 25, 0.8);
+    color: #00fff2;
+    border: 1px solid #00fff2;
+    border-radius: 12px;
+    padding: 12px;
+    resize: none;
+    box-shadow: 0 0 15px rgba(0,255,255,0.15);
+    transition: 0.3s ease;
+  }
+
+  textarea:focus, input:focus {
+    outline: none;
+    box-shadow: 0 0 25px rgba(0,255,255,0.45);
+  }
+
   textarea[readonly] {
     cursor: not-allowed;
   }
-  input, button {
-    margin: 10px 0;
-  }
+
   input {
-    background: #1a1a1a; color: #00ffcc;
-    border: 1px solid #00ffcc; border-radius: 8px;
-    padding: 8px; width: 80%;
+    height: 40px;
+    text-align: center;
+    font-weight: bold;
   }
+
   button {
-    background: #00ffcc; color: #0d0d0d;
-    border: none; border-radius: 8px;
-    padding: 10px 20px; font-weight: bold;
-    cursor: pointer; transition: 0.3s;
+    background: linear-gradient(90deg, #00ffaa, #00fff2);
+    border: none;
+    color: #000;
+    border-radius: 12px;
+    padding: 12px 25px;
+    font-weight: bold;
+    margin-top: 15px;
+    cursor: pointer;
+    transition: 0.3s;
+    box-shadow: 0 0 20px rgba(0,255,255,0.3);
   }
+
   button:hover {
-    background: #00ffaa;
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(0,255,200,0.6);
   }
+
+  button.copied {
+    background: linear-gradient(90deg, #00ff77, #00ffa9);
+    box-shadow: 0 0 25px #00ff77;
+  }
+
   .output-container {
-    display: flex; flex-direction: column; align-items: center;
     width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .futuristic-border {
+    border: 2px solid rgba(0,255,255,0.4);
+    border-radius: 15px;
+    padding: 20px;
+    margin-top: 20px;
+    width: 90%;
+    box-shadow: 0 0 40px rgba(0,255,255,0.15);
+    backdrop-filter: blur(6px);
+  }
+
+  ::selection {
+    background: #00fff2;
+    color: #000;
+  }
+
+  footer {
+    margin-top: 40px;
+    font-size: 0.8rem;
+    color: #00ccc9;
+    opacity: 0.7;
   }
 </style>
 </head>
 <body>
+
 <h1>Plist → XML Converter</h1>
 
-<label>Paste your .plist data here:</label>
-<textarea id="plistInput" placeholder="Paste plist text here..."></textarea>
+<div class="futuristic-border">
+  <label>Paste your .plist data:</label>
+  <textarea id="plistInput" placeholder="Paste plist text here..."></textarea>
 
-<label>Enter image filename (e.g. PlayerExplosion_10-hd.png):</label>
-<input type="text" id="imageName" placeholder="Enter image filename">
+  <label>Enter image filename (e.g. PlayerExplosion_10-hd.png):</label>
+  <input type="text" id="imageName" placeholder="Enter image filename">
 
-<button onclick="convertPlist()">Convert</button>
+  <button onclick="convertPlist()">Convert</button>
 
-<div class="output-container">
-  <h3>Converted XML Output:</h3>
-  <textarea id="xmlOutput" readonly></textarea>
-  <button onclick="copyOutput()">Copy XML</button>
+  <div class="output-container">
+    <label>Converted XML Output:</label>
+    <textarea id="xmlOutput" readonly placeholder="Output will appear here..."></textarea>
+    <button id="copyBtn" onclick="copyOutput()">Copy XML</button>
+  </div>
 </div>
+
+<footer>© 2025 Plist Converter — Designed by BG4</footer>
 
 <script>
 function convertPlist() {
@@ -123,11 +193,20 @@ function convertPlist() {
 
 function copyOutput() {
   const xmlText = document.getElementById("xmlOutput");
+  const copyBtn = document.getElementById("copyBtn");
+  
   xmlText.select();
   xmlText.setSelectionRange(0, 99999);
-  document.execCommand("copy");
-  alert("Copied to clipboard!");
+  navigator.clipboard.writeText(xmlText.value);
+
+  copyBtn.classList.add("copied");
+  copyBtn.innerText = "Copied!";
+  setTimeout(() => {
+    copyBtn.classList.remove("copied");
+    copyBtn.innerText = "Copy XML";
+  }, 1200);
 }
 </script>
+
 </body>
 </html>
