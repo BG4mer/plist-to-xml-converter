@@ -1,426 +1,182 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Plist → XML Converter — Perfect frameX/frameY</title>
-
-<!-- Embedded SVG favicon (neon gear) -->
-<link rel="icon" href='data:image/svg+xml;utf8,
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" fill="%23010b13"/>
-  <g transform="translate(50,50)">
-    <circle r="10" fill="%23000"/>
-    <circle r="5" fill="%2300e6ff"/>
-    <path d="M-12-22 L12-22 L22-12 L32 0 L22 12 L12 22 L-12 22 L-22 12 L-32 0 L-22 -12 Z" fill="%2300ffe6" opacity="0.9"/>
-  </g>
-</svg>' type="image/svg+xml">
-
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plist → XML Converter</title>
+<link rel="icon" href="https://raw.githubusercontent.com/favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 <style>
-  :root{
-    --bg-1: #020617;
-    --accent-1: #00fff2;   /* blue/cyan */
-    --accent-2: #7a00ff;   /* purple */
-    --accent-3: #00ff77;   /* green */
-    --accent-4: #ff5a3c;   /* red/orange */
-    --panel-radius: 14px;
-    --max-width: 1200px;
-  }
-  html,body{height:100%}
-  body{
-    margin:0; min-height:100%; font-family:'Space Mono', monospace;
-    background:
-      radial-gradient(600px 400px at 10% 10%, rgba(10,10,30,0.45), transparent 10%),
-      radial-gradient(800px 500px at 90% 90%, rgba(30,10,40,0.35), transparent 10%),
-      linear-gradient(180deg,var(--bg-1),#000 60%);
-    color:#dffefe; display:flex; justify-content:center; padding:36px 20px;
-  }
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
 
-  .shell{ width:100%; max-width:var(--max-width); display:grid; gap:22px; grid-template-columns:1fr 480px; align-items:start;}
-  @media (max-width:1100px){ .shell{grid-template-columns:1fr; } .right-col{order:2} }
+body {
+    margin: 0;
+    font-family: 'Orbitron', sans-serif;
+    background: linear-gradient(135deg, #0a0a1f, #1a1a33);
+    color: #00ffea;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 20px;
+    overflow-x: hidden;
+}
 
-  .panel{ background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:var(--panel-radius); padding:20px; box-shadow:0 6px 30px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.03); backdrop-filter: blur(8px); }
+h1 {
+    font-weight: 700;
+    font-size: 2.2em;
+    margin-bottom: 25px;
+    color: #00ffea;
+    text-shadow: 0 0 20px #00ffe1, 0 0 40px #00ffe1;
+}
 
-  .brand{ display:flex; gap:14px; align-items:center; margin-bottom:14px; }
-  .logo{ width:62px; height:62px; border-radius:12px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,var(--accent-1),var(--accent-2)); box-shadow: 0 6px 30px rgba(0,255,230,0.08); }
-  .title .main{ font-family:'Orbitron'; font-weight:700; font-size:20px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-  .title .sub{ font-size:12px; color:rgba(255,255,255,0.55); margin-top:4px; }
+textarea, pre code {
+    width: 90%;
+    max-width: 950px;
+    background: #111122;
+    border: 2px solid #00ffea;
+    border-radius: 14px;
+    color: #00ffea;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    resize: none;
+    margin-bottom: 20px;
+    box-shadow: 0 0 15px #00ffea;
+}
 
-  .controls{ display:flex; gap:12px; margin-top:12px; align-items:center; flex-wrap:wrap; }
-  .file-like{ background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:10px; padding:8px 12px; color:var(--accent-1); border:1px solid rgba(0,255,230,0.08); display:flex; gap:8px; align-items:center; }
-  .file-like input[type="file"]{ display:none; }
-  .btn{ padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:700; border:none; color:#001; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); box-shadow:0 8px 30px rgba(0,170,255,0.08); }
-  .btn.ghost{ background:transparent; color:var(--accent-1); border:1px solid rgba(0,255,240,0.08); box-shadow:none; }
-  .input{ width:100%; margin-top:12px; border-radius:12px; padding:12px; background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.03); color:#bff; font-size:13px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.015); }
+textarea:focus {
+    outline: none;
+    box-shadow: 0 0 25px #00ffea;
+}
 
-  .plist-box{ margin-top:14px; height:360px; overflow:auto; white-space:pre-wrap; resize:vertical; font-size:13px; }
+button {
+    background: linear-gradient(45deg, #00ffea, #004466);
+    border: none;
+    padding: 12px 28px;
+    margin: 5px;
+    border-radius: 12px;
+    font-weight: bold;
+    color: #111122;
+    cursor: pointer;
+    font-family: 'Orbitron', sans-serif;
+    text-transform: uppercase;
+    transition: all 0.25s ease;
+    box-shadow: 0 0 15px #00ffea, 0 0 25px #00ffea inset;
+}
 
-  .theme-row{ display:flex; gap:8px; margin-top:14px; align-items:center; }
-  .theme-swatch{ width:40px; height:40px; border-radius:9px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; color:#001; font-weight:700; border:1px solid rgba(0,0,0,0.2); box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
-  .theme-swatch.auto{ width:auto; padding:8px 12px; border-radius:10px; font-size:13px; }
+button:hover {
+    transform: scale(1.08);
+    box-shadow: 0 0 30px #00ffea, 0 0 40px #00ffea inset;
+}
 
-  .right-col{ position:relative; }
-  .output-panel{ position:sticky; top:36px; }
-  .output-header{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
-  .xml-output{ width:100%; min-height:480px; max-height:70vh; overflow:auto; padding:16px; border-radius:12px; background:linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.45)); border:1px solid rgba(255,255,255,0.03); box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), 0 10px 40px rgba(0,0,0,0.6); font-size:13px; line-height:1.5; white-space:pre; color:#d9fff8; font-family:'Space Mono', monospace; }
+#outputContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
 
-  .xml-toolbar{ display:flex; gap:8px; align-items:center; }
-  .copy-btn{ padding:10px 14px; border-radius:10px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); border:none; font-weight:700; cursor:pointer; color:#001; box-shadow:0 8px 30px rgba(0,170,255,0.08); }
-  .copy-btn.copied{ transform:scale(.98); filter:brightness(1.08) saturate(1.1); }
-  .download-btn{ padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:#bff; cursor:pointer; }
-  .credits{ text-align:center; color:rgba(255,255,255,0.4); font-size:12px; margin-top:18px; }
+pre {
+    width: 90%;
+    max-width: 950px;
+    height: 350px;
+    overflow-y: auto;
+    background: #111122;
+    border: 2px solid #00ffea;
+    border-radius: 14px;
+    padding: 15px;
+    font-size: 14px;
+    box-shadow: 0 0 15px #00ffea;
+}
 
-  /* theme classes */
-  body.theme-blue .logo{ background:linear-gradient(135deg,var(--accent-1),var(--accent-2)); }
-  body.theme-green .logo{ background:linear-gradient(135deg,var(--accent-3), #00d66a); }
-  body.theme-red .logo{ background:linear-gradient(135deg,var(--accent-4), #ff8a5a); }
+code {
+    display: block;
+    white-space: pre-wrap;
+}
 </style>
 </head>
-<body class="theme-blue">
+<body>
 
-<div class="shell">
+<h1>Plist → XML Converter</h1>
 
-  <div class="panel left-panel">
-    <div class="brand">
-      <div class="logo" aria-hidden>
-        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3" fill="#001"/><circle cx="12" cy="12" r="2.6" fill="#00e6ff"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.5 4.5l2.1 2.1M17.4 17.4l2.1 2.1M4.5 19.5l2.1-2.1M17.4 6.6l2.1-2.1" stroke="#000" stroke-width="0.7"/></svg>
-      </div>
-      <div class="title">
-        <div class="main">Plist → XML Converter</div>
-        <div class="sub">Manual paste • Perfect frameX/frameY • Futuristic UI</div>
-      </div>
-    </div>
+<textarea id="inputPlist" placeholder="Paste your .plist content here..."></textarea>
 
-    <div class="controls">
-      <label class="file-like" title="Optional: choose a local plist file">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2v14" stroke="currentColor" stroke-width="1.6"/><path d="M5 12l7-10 7 10" stroke="currentColor" stroke-width="1.6"/></svg>
-        <span style="font-size:13px;color:rgba(255,255,255,0.7)">Load .plist</span>
-        <input id="filePlist" type="file" accept=".plist,.xml" />
-      </label>
+<div>
+    <button onclick="convertPlist()">Convert</button>
+    <button onclick="copyOutput()">Copy XML</button>
+    <button onclick="downloadXML()">Download XML</button>
+</div>
 
-      <button id="autoDetectBtn" class="btn ghost" title="Auto-detect image name from pasted plist or use manual field">Auto-detect image name</button>
-
-      <div style="flex:1"></div>
-
-      <div style="display:flex;gap:8px;">
-        <div class="theme-swatch" id="sw-blue" title="Neon Blue/Purple" style="background:linear-gradient(90deg,var(--accent-1),var(--accent-2))">B</div>
-        <div class="theme-swatch" id="sw-green" title="Green/Black" style="background:linear-gradient(90deg,var(--accent-3),#00cc66)">G</div>
-        <div class="theme-swatch" id="sw-red" title="Red/Orange" style="background:linear-gradient(90deg,var(--accent-4),#ff8a5a)">R</div>
-        <div class="theme-swatch auto" id="sw-all" title="Cycle all themes">All</div>
-      </div>
-    </div>
-
-    <label style="margin-top:14px">Paste your .plist content here (or load a file):</label>
-    <textarea id="plistInput" class="input plist-box" placeholder="Paste full .plist content. The converter recognizes textureRect/frame and spriteOffset / spriteSize / spriteSourceSize formats."></textarea>
-
-    <div style="display:flex;gap:12px;align-items:center;margin-top:12px;">
-      <input id="imageName" class="input" type="text" placeholder="Image filename (optional) — leave blank to auto-detect" />
-      <button id="convertBtn" class="btn">Convert</button>
-    </div>
-
-    <div style="margin-top:10px;color:rgba(255,255,255,0.45);font-size:13px">Tip: For perfect results include textureFileName and spriteSourceSize in your plist. Ctrl+Enter to convert.</div>
-  </div>
-
-  <div class="right-col">
-    <div class="panel output-panel">
-      <div class="output-header">
-        <div style="display:flex;flex-direction:column">
-          <strong style="font-family:'Orbitron'">Generated XML</strong>
-          <span style="font-size:12px;color:rgba(255,255,255,0.5)">Read-only — copy or download</span>
-        </div>
-        <div class="xml-toolbar">
-          <button id="downloadBtn" class="download-btn" title="Download as XML">Download</button>
-          <button id="copyBtn" class="copy-btn">Copy XML</button>
-        </div>
-      </div>
-
-      <pre id="xmlOutput" class="xml-output" aria-readonly="true"></pre>
-
-      <div style="display:flex;gap:12px;margin-top:14px;align-items:center;justify-content:space-between">
-        <div class="credits">Made with ♥ — Perfect frameX/frameY logic</div>
-        <div style="color:rgba(255,255,255,0.38);font-size:12px">Format: TextureAtlas (SubTexture entries)</div>
-      </div>
-    </div>
-  </div>
-
+<div id="outputContainer">
+    <pre><code id="outputXML" class="xml"></code></pre>
 </div>
 
 <script>
-/* ------------------------
-   CORE PARSING LOGIC
-   ------------------------
-   Goals:
-   - frameX / frameY = spriteOffset (or offset) when present (preserve sign)
-   - frameWidth / frameHeight = spriteSourceSize/sourceSize if present, else fallback to spriteSize or width/height
-   - textureRect/frame parsing robust for "{{x,y},{w,h}}", "{x,y,w,h}", etc.
-   - remove ".png" from names
-*/
+function convertPlist() {
+    const plistText = document.getElementById('inputPlist').value;
+    if (!plistText) {
+        alert('Paste your plist first!');
+        return;
+    }
 
-const plistInput = document.getElementById('plistInput');
-const xmlOutput = document.getElementById('xmlOutput');
-const imageNameInput = document.getElementById('imageName');
-const convertBtn = document.getElementById('convertBtn');
-const copyBtn = document.getElementById('copyBtn');
-const downloadBtn = document.getElementById('downloadBtn');
-const filePlist = document.getElementById('filePlist');
+    // Extract image name
+    const imageMatch = plistText.match(/<key>realTextureFileName<\/key>\s*<string>(.*?)<\/string>/);
+    const imageName = imageMatch ? imageMatch[1] : 'PlayerExplosion.png';
 
-convertBtn.addEventListener('click', () => {
-  const text = getPlistText();
-  if (!text) { alert('Paste or load a .plist first'); return; }
-  const imageNameManual = imageNameInput.value.trim();
-  const xml = convertPlistToXml(text, imageNameManual);
-  xmlOutput.textContent = xml;
-});
+    // Extract frames
+    const frameRegex = /<key>(.*?)<\/key>\s*<dict>([\s\S]*?)<\/dict>/g;
+    let match;
+    let xmlOutput = `<?xml version="1.0" encoding="utf-8"?>\n<TextureAtlas imagePath="${imageName}">\n`;
 
-copyBtn.addEventListener('click', async () => {
-  const txt = xmlOutput.textContent || '';
-  if(!txt) return;
-  try {
-    await navigator.clipboard.writeText(txt);
-    copyBtn.classList.add('copied');
-    copyBtn.innerText = 'Copied!';
-    setTimeout(()=>{ copyBtn.classList.remove('copied'); copyBtn.innerText='Copy XML'; }, 1100);
-  } catch(e){ alert('Copy failed — select and copy manually'); }
-});
+    while ((match = frameRegex.exec(plistText)) !== null) {
+        const frameName = match[1].replace('.png','');
+        const dictContent = match[2];
 
-downloadBtn.addEventListener('click', () => {
-  const txt = xmlOutput.textContent || '';
-  if(!txt) { alert('Nothing to download'); return; }
-  const name = (imageNameInput.value.trim() || 'spritesheet.png').replace(/\.[^/.]+$/, '') + '.xml';
-  const blob = new Blob([txt], {type:'application/xml;charset=utf-8'}); const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); a.remove();
-});
+        const rectMatch = dictContent.match(/<key>textureRect<\/key>\s*<string>{{(\d+),(\d+)}{,}?(\d+),(\d+)}}/) 
+                         || dictContent.match(/<key>textureRect<\/key>\s*<string>{{(\d+),(\d+)},{(\d+),(\d+)}}/);
 
-/* file input load */
-filePlist.addEventListener('change', (ev) => {
-  const f = ev.target.files[0]; if(!f) return;
-  const r = new FileReader();
-  r.onload = () => { plistInput.value = r.result; autoDetectImageName(r.result); };
-  r.readAsText(f);
-});
+        const sourceMatch = dictContent.match(/<key>spriteSourceSize<\/key>\s*<string>{(\d+),(\d+)}/);
 
-/* Auto-detect */
-document.getElementById('autoDetectBtn').addEventListener('click', ()=>{
-  const txt = plistInput.value || '';
-  autoDetectImageName(txt);
-});
+        if (rectMatch && sourceMatch) {
+            const x = rectMatch[1];
+            const y = rectMatch[2];
+            const width = rectMatch[3];
+            const height = rectMatch[4];
+            const frameWidth = sourceMatch[1];
+            const frameHeight = sourceMatch[2];
+            const frameX = 0;
+            const frameY = 0;
 
-function getPlistText(){ return plistInput.value.trim(); }
-
-function convertPlistToXml(plistText, imageNameManual='') {
-  let parser, xmlDoc;
-  try { parser = new DOMParser(); xmlDoc = parser.parseFromString(plistText, "text/xml"); } catch(e) { xmlDoc = null; }
-
-  // determine image name
-  let imageName = imageNameManual || extractTextureFileName(plistText) || 'spritesheet.png';
-
-  const entries = [];
-
-  if (xmlDoc) {
-    // search for frames dicts and their keys
-    const allKeys = xmlDoc.getElementsByTagName('key');
-    for (let i = 0; i < allKeys.length; i++) {
-      const k = allKeys[i];
-      const keyText = (k.textContent||'').trim();
-      const next = k.nextElementSibling;
-      // Candidate if next is dict and the key looks like a frame name or is inside frames block
-      if (next && next.tagName === 'dict') {
-        // check whether this key is inside frames block (ancestor check)
-        let isFrameCandidate = false;
-        let parent = k.parentElement;
-        if (parent && parent.parentElement) {
-          const siblings = Array.from(parent.parentElement.children);
-          for (const s of siblings) {
-            if (s.tagName && s.tagName.toLowerCase() === 'key' && (s.textContent||'').trim() === 'frames') { isFrameCandidate = true; break; }
-          }
+            xmlOutput += `\t<SubTexture name="${frameName}" x="${x}" y="${y}" width="${width}" height="${height}" frameX="${frameX}" frameY="${frameY}" frameWidth="${frameWidth}" frameHeight="${frameHeight}"/>\n`;
         }
-        // also accept if key looks like filename or frame name
-        if (/\.(png|jpg|jpeg)$/i.test(keyText) || /_[0-9]{2,}/.test(keyText)) isFrameCandidate = true;
-        if (!isFrameCandidate) continue;
-
-        const parsed = parseFrameDictContent(next);
-        if (parsed) {
-          entries.push({ name: keyText.replace(/\.(png|jpg|jpeg)$/i,'').trim(), ...parsed });
-        }
-      }
     }
-  }
 
-  // fallback regex parse if nothing detected
-  if(entries.length === 0) {
-    entries.push(...quickRegexParse(plistText));
-  }
+    xmlOutput += '</TextureAtlas>';
 
-  // Build xml
-  let out = '<?xml version="1.0" encoding="utf-8"?>\n';
-  out += `<TextureAtlas imagePath="${escapeXml(imageName)}">\n`;
-  for (const e of entries) {
-    // ensure numeric
-    const x = (e.x ?? 0);
-    const y = (e.y ?? 0);
-    const w = (e.width ?? e.frameWidth ?? 0);
-    const h = (e.height ?? e.frameHeight ?? 0);
-    // frameX/frameY prefer spriteOffset (offset), otherwise compute as 0
-    const fx = (e.frameX ?? 0);
-    const fy = (e.frameY ?? 0);
-    const fw = (e.frameWidth ?? w);
-    const fh = (e.frameHeight ?? h);
-    out += `\t<SubTexture name="${escapeXml(e.name)}" x="${x}" y="${y}" width="${w}" height="${h}" frameX="${fx}" frameY="${fy}" frameWidth="${fw}" frameHeight="${fh}"/>\n`;
-  }
-  out += '</TextureAtlas>';
-  return out;
+    const output = document.getElementById('outputXML');
+    output.textContent = xmlOutput;
+    hljs.highlightElement(output);
 }
 
-/* extract textureFileName or similar */
-function extractTextureFileName(txt){
-  const m = txt.match(/<key>\s*(?:realTextureFileName|textureFileName)\s*<\/key>\s*<string>\s*([^<>\r\n]+?)\s*<\/string>/i);
-  if(m && m[1]) return m[1].trim();
-  const m2 = txt.match(/([A-Za-z0-9_\-]+\.png)/i);
-  if(m2) return m2[1];
-  return null;
+function copyOutput() {
+    const output = document.getElementById('outputXML');
+    navigator.clipboard.writeText(output.textContent);
+    alert('Copied XML to clipboard!');
 }
 
-/* parse <dict> DOM node for a frame */
-function parseFrameDictContent(dictNode){
-  const dKeys = dictNode.getElementsByTagName('key');
-  const obj = {};
-  for (let j=0;j<dKeys.length;j++){
-    const name = (dKeys[j].textContent||'').trim();
-    const valNode = dKeys[j].nextElementSibling;
-    if(!valNode) continue;
-    const valText = (valNode.textContent||'').trim();
-    if(!valText) continue;
-
-    // textureRect/frame formats
-    if(/textureRect|frame/i.test(name)){
-      const nums = extractNumbersFromBracedPair(valText);
-      if(nums.length === 4){
-        obj.x = nums[0]; obj.y = nums[1]; obj.width = nums[2]; obj.height = nums[3];
-      }
-    } else if(/spriteSize|spriteSourceSize|sourceSize/i.test(name)){
-      const nums = extractNumbersFromBracedPair(valText);
-      if(nums.length >= 2){
-        // source size is the original untrimmed size
-        obj.frameWidth = nums[0]; obj.frameHeight = nums[1];
-      }
-    } else if(/spriteOffset|offset/i.test(name)){
-      const nums = extractNumbersFromBracedPair(valText);
-      if(nums.length >= 2){
-        // Important: Keep sign — plist offsets are usually {x,y}
-        // Many p-list conventions: spriteOffset {x,y} is how much sprite is moved from center; we will use it directly for frameX/frameY
-        obj.frameX = nums[0]; obj.frameY = nums[1];
-      }
-    } else if(/x|y|width|height/i.test(name) && /^-?\d+(\.\d+)?$/.test(valText)){
-      const n = Number(valText);
-      if(name.toLowerCase() === 'x') obj.x = n;
-      if(name.toLowerCase() === 'y') obj.y = n;
-      if(name.toLowerCase() === 'width') obj.width = n;
-      if(name.toLowerCase() === 'height') obj.height = n;
-    }
-  }
-
-  // If spriteSize is present but width/height missing, use spriteSize
-  if((obj.width===undefined || obj.height===undefined) && dictNode.getElementsByTagName){
-    // try to read <key>spriteSize</key> or <key>spriteSize</key><string>{w,h}</string>
-    const text = dictNode.textContent || '';
-    const sMatch = text.match(/<key>\s*(?:spriteSize|spriteSourceSize)\s*<\/key>\s*<string>\s*([^<]+?)\s*<\/string>/i);
-    if(sMatch){
-      const sNums = extractNumbersFromBracedPair(sMatch[1]);
-      if(sNums.length>=2){
-        if(obj.width===undefined) obj.width = sNums[0];
-        if(obj.height===undefined) obj.height = sNums[1];
-      }
-    }
-  }
-
-  // fallback: if frameWidth/frameHeight missing, try to get from sourceSize in parent metadata
-  // Not necessary here; caller will fallback later.
-
-  // If we have at least some data, return; else null
-  if(Object.keys(obj).length > 0) return obj;
-  return null;
+function downloadXML() {
+    const output = document.getElementById('outputXML').textContent;
+    const blob = new Blob([output], {type: "text/xml"});
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "converted.xml";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
-
-/* quick regex fallback similar to earlier but with improved frameX/frameY handling */
-function quickRegexParse(txt){
-  const frames = [];
-  // isolate frames block if available
-  const framesBlockMatch = txt.match(/<key>\s*frames\s*<\/key>\s*<dict>([\s\S]*?)<\/dict>/i);
-  const block = framesBlockMatch ? framesBlockMatch[1] : txt;
-  // match: <key>name.png</key> <dict> ... </dict>
-  const keyDictRegex = /<key>\s*([^<]+?)\s*<\/key>\s*<dict>([\s\S]*?)<\/dict>/gi;
-  let m;
-  while((m = keyDictRegex.exec(block)) !== null){
-    const name = m[1].trim().replace(/\.(png|jpg|jpeg)$/i,'');
-    const dictInner = m[2];
-    const entry = {};
-    // textureRect/frame string
-    const tr = dictInner.match(/<key>\s*(?:textureRect|frame)\s*<\/key>\s*<string>\s*([^<]+?)\s*<\/string>/i);
-    if(tr){
-      const nums = extractNumbersFromBracedPair(tr[1]);
-      if(nums.length===4){ entry.x=nums[0]; entry.y=nums[1]; entry.width=nums[2]; entry.height=nums[3]; }
-    } else {
-      const xi = dictInner.match(/<key>\s*x\s*<\/key>\s*<integer>\s*(-?\d+)\s*<\/integer>/i);
-      const yi = dictInner.match(/<key>\s*y\s*<\/key>\s*<integer>\s*(-?\d+)\s*<\/integer>/i);
-      const wi = dictInner.match(/<key>\s*width\s*<\/key>\s*<integer>\s*(\d+)\s*<\/integer>/i);
-      const hi = dictInner.match(/<key>\s*height\s*<\/key>\s*<integer>\s*(\d+)\s*<\/integer>/i);
-      if(xi) entry.x = Number(xi[1]);
-      if(yi) entry.y = Number(yi[1]);
-      if(wi) entry.width = Number(wi[1]);
-      if(hi) entry.height = Number(hi[1]);
-    }
-    // sourceSize
-    const ss = dictInner.match(/<key>\s*(?:sourceSize|spriteSourceSize)\s*<\/key>\s*<string>\s*([^<]+?)\s*<\/string>/i);
-    if(ss){ const sNums = extractNumbersFromBracedPair(ss[1]); if(sNums.length>=2){ entry.frameWidth=sNums[0]; entry.frameHeight=sNums[1]; } }
-    // spriteOffset / offset
-    const off = dictInner.match(/<key>\s*(?:spriteOffset|offset)\s*<\/key>\s*<string>\s*([^<]+?)\s*<\/string>/i);
-    if(off){ const oNums = extractNumbersFromBracedPair(off[1]); if(oNums.length>=2){ entry.frameX=oNums[0]; entry.frameY=oNums[1]; } }
-    frames.push({name, ...entry});
-  }
-  return frames;
-}
-
-/* extract numbers robustly from braces or comma lists */
-function extractNumbersFromBracedPair(s){
-  if(!s) return [];
-  const nums = s.match(/-?\d+(\.\d+)?/g);
-  if(!nums) return [];
-  return nums.map(n => Number(n));
-}
-
-/* small xml escape */
-function escapeXml(s){
-  if(!s) return '';
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function autoDetectImageName(plistText){
-  const n = extractTextureFileName(plistText || plistInput.value);
-  if(n) { imageNameInput.value = n; return n; }
-  return null;
-}
-
-/* UI bits: theme switching, paste auto-detect, shortcuts */
-const swBlue = document.getElementById('sw-blue');
-const swGreen = document.getElementById('sw-green');
-const swRed = document.getElementById('sw-red');
-const swAll = document.getElementById('sw-all');
-let cycleInterval = null;
-swBlue.addEventListener('click', ()=>{ stopCycle(); setTheme('blue'); });
-swGreen.addEventListener('click', ()=>{ stopCycle(); setTheme('green'); });
-swRed.addEventListener('click', ()=>{ stopCycle(); setTheme('red'); });
-swAll.addEventListener('click', ()=>{ if(cycleInterval){ stopCycle(); } else { startCycle(); } });
-function setTheme(t){ document.body.classList.remove('theme-blue','theme-green','theme-red'); if(t==='green') document.body.classList.add('theme-green'); else if(t==='red') document.body.classList.add('theme-red'); else document.body.classList.add('theme-blue'); }
-function startCycle(){ let idx=0; const themes=['blue','green','red']; cycleInterval = setInterval(()=>{ setTheme(themes[idx%themes.length]); idx++; }, 1400); swAll.textContent='Stop'; }
-function stopCycle(){ clearInterval(cycleInterval); cycleInterval=null; swAll.textContent='All'; }
-
-plistInput.addEventListener('paste', ()=> setTimeout(()=> autoDetectImageName(plistInput.value), 40));
-plistInput.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.key==='Enter'){ convertBtn.click(); } });
-
-/* initialize */
-setTheme('blue');
 </script>
 
 </body>
