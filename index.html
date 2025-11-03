@@ -1,231 +1,368 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Plist → XML Converter</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Plist → XML Converter — Perfect frameX/frameY</title>
+  <style>
+    :root{--bg:#0b0b0d;--panel:#0f1113;--accent:#00e6ff;--accent2:#ff4dd2;--glass:rgba(255,255,255,0.03);--neon:0 0 18px rgba(0,230,255,0.12)}
+    *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#060607 0%, #0b0b0d 60%);color:#dfe7ee}
+    .wrap{max-width:1100px;margin:24px auto;padding:20px;border-radius:18px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);box-shadow:0 8px 30px rgba(0,0,0,0.7)}
+    header{display:flex;gap:16px;align-items:center}
+    .logo{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#041018;box-shadow:var(--neon)}
+    h1{font-size:18px;margin:0}
+    .meta{color:#9fb4c7;font-size:12px}
 
-<!-- Embedded SVG favicon (neon gear) -->
-<link rel="icon" href='data:image/svg+xml;utf8,
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" fill="%23010b13"/>
-  <g transform="translate(50,50)">
-    <circle r="10" fill="%23000"/>
-    <circle r="5" fill="%2300e6ff"/>
-    <path d="M-12-22 L12-22 L22-12 L32 0 L22 12 L12 22 L-12 22 L-22 12 L-32 0 L-22 -12 Z" fill="%2300ffe6" opacity="0.9"/>
-  </g>
-</svg>' type="image/svg+xml">
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:18px;margin-top:18px}
+    .card{background:var(--panel);padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
 
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    label{display:block;font-size:13px;margin-bottom:6px;color:#a9c9d8}
+    textarea{width:100%;min-height:180px;padding:12px;border-radius:8px;background:var(--glass);border:1px solid rgba(255,255,255,0.03);color:#eaf6ff;resize:vertical}
+    textarea[readonly]{opacity:0.95}
+    button{background:linear-gradient(90deg,var(--accent),var(--accent2));border:0;color:#021216;padding:10px 12px;border-radius:10px;font-weight:700;cursor:pointer}
+    .row{display:flex;gap:8px;align-items:center}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    .small{font-size:12px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.02);color:#bfe9ff}
 
-<style>
-:root{
-  --bg-1: #020617;
-  --accent-1: #00fff2;
-  --accent-2: #7a00ff;
-  --accent-3: #00ff77;
-  --accent-4: #ff5a3c;
-  --panel-radius: 14px;
-  --max-width: 1200px;
-}
-html,body{height:100%;margin:0;font-family:'Space Mono', monospace;color:#dffefe;}
-body{
-  background:
-    radial-gradient(600px 400px at 10% 10%, rgba(10,10,30,0.45), transparent 10%),
-    radial-gradient(800px 500px at 90% 90%, rgba(30,10,40,0.35), transparent 10%),
-    linear-gradient(180deg,var(--bg-1),#000 60%);
-  display:flex; justify-content:center; padding:36px 20px;
-}
+    .stars{display:flex;gap:6px;margin-left:auto}
+    .star{width:22px;height:22px;border-radius:6px;background:linear-gradient(180deg,#fff, #ffd700);display:inline-flex;align-items:center;justify-content:center;color:#021216;font-weight:900;box-shadow:0 6px 18px rgba(255,215,0,0.12)}
 
-.shell{ width:100%; max-width:var(--max-width); display:grid; gap:22px; grid-template-columns:1fr 480px; align-items:start;}
-@media (max-width:1100px){ .shell{grid-template-columns:1fr;} .right-col{order:2} }
+    .preview{display:flex;flex-direction:column;gap:8px}
+    .canvasWrap{background:black;border-radius:8px;height:300px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+    .spriteCanvas{max-width:100%;max-height:100%}
+    .framesList{max-height:240px;overflow:auto;padding:8px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
 
-.panel{
-  background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border-radius:var(--panel-radius); padding:20px; box-shadow:0 6px 30px rgba(0,0,0,0.6);
-  border:1px solid rgba(255,255,255,0.03); backdrop-filter: blur(8px);
-}
+    .mobileFriendly{display:none}
+    .footer{display:flex;gap:8px;align-items:center;margin-top:12px}
 
-.brand{ display:flex; gap:14px; align-items:center; margin-bottom:14px; }
-.logo{ width:62px; height:62px; border-radius:12px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,var(--accent-1),var(--accent-2)); box-shadow: 0 6px 30px rgba(0,255,230,0.08); }
-.title .main{ font-family:'Orbitron'; font-weight:700; font-size:20px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-.title .sub{ font-size:12px; color:rgba(255,255,255,0.55); margin-top:4px; }
+    @media(max-width:980px){.grid{grid-template-columns:1fr;}.mobileFriendly{display:block}}
 
-.controls{ display:flex; gap:12px; margin-top:12px; align-items:center; flex-wrap:wrap; }
-.file-like{ background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:10px; padding:8px 12px; color:var(--accent-1); border:1px solid rgba(0,255,230,0.08); display:flex; gap:8px; align-items:center; }
-.file-like input[type="file"]{ display:none; }
-.btn{ padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:700; border:none; color:#001; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); box-shadow:0 8px 30px rgba(0,170,255,0.08); }
-.btn.ghost{ background:transparent; color:var(--accent-1); border:1px solid rgba(0,255,240,0.08); box-shadow:none; }
-.input{ width:100%; margin-top:12px; border-radius:12px; padding:12px; background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.03); color:#bff; font-size:13px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.015); }
-
-.plist-box{ margin-top:14px; height:360px; overflow:auto; white-space:pre-wrap; resize:vertical; font-size:13px; }
-
-.theme-row{ display:flex; gap:8px; margin-top:14px; align-items:center; }
-.theme-swatch{ width:40px; height:40px; border-radius:9px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; color:#001; font-weight:700; border:1px solid rgba(0,0,0,0.2); box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
-.theme-swatch.auto{ width:auto; padding:8px 12px; border-radius:10px; font-size:13px; }
-
-.right-col{ position:relative; }
-.output-panel{ position:sticky; top:36px; }
-.output-header{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
-.xml-output{ width:100%; min-height:480px; max-height:70vh; overflow:auto; padding:16px; border-radius:12px; background:linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.45)); border:1px solid rgba(255,255,255,0.03); box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), 0 10px 40px rgba(0,0,0,0.6); font-size:13px; line-height:1.5; white-space:pre; color:#d9fff8; font-family:'Space Mono', monospace; }
-
-.xml-toolbar{ display:flex; gap:8px; align-items:center; }
-.copy-btn{ padding:10px 14px; border-radius:10px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); border:none; font-weight:700; cursor:pointer; color:#001; box-shadow:0 8px 30px rgba(0,170,255,0.08); }
-.copy-btn.copied{ transform:scale(.98); filter:brightness(1.08) saturate(1.1); }
-.download-btn{ padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:#bff; cursor:pointer; }
-.credits{ text-align:center; color:rgba(255,255,255,0.4); font-size:12px; margin-top:18px; }
-
-body.theme-blue .logo{ background:linear-gradient(135deg,var(--accent-1),var(--accent-2)); }
-body.theme-green .logo{ background:linear-gradient(135deg,var(--accent-3), #00d66a); }
-body.theme-red .logo{ background:linear-gradient(135deg,var(--accent-4), #ff8a5a); }
-
-/* drag & drop zone */
-#dropZone{ margin-top:12px; border:2px dashed rgba(255,255,255,0.2); border-radius:12px; padding:16px; text-align:center; color:rgba(255,255,255,0.5); transition:0.2s; }
-#dropZone.hover{ border-color:#00fff2; color:#00fff2; }
-
-/* mobile tweaks */
-@media (max-width:600px){
-  .shell{ padding:20px; grid-template-columns:1fr;}
-  .plist-box{ height:250px; font-size:12px; }
-  .xml-output{ min-height:300px; font-size:12px; }
-}
-</style>
+    /* Newgrounds-ish / futuristic accents */
+    .brandTag{font-size:11px;padding:6px 8px;border-radius:999px;background:linear-gradient(90deg,#07121a, rgba(255,255,255,0.02));border:1px solid rgba(255,255,255,0.03)}
+  </style>
 </head>
-<body class="theme-blue">
-
-<div class="shell">
-
-  <div class="panel left-panel">
-    <div class="brand">
-      <div class="logo" aria-hidden>
-        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3" fill="#001"/><circle cx="12" cy="12" r="2.6" fill="#00e6ff"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.5 4.5l2.1 2.1M17.4 17.4l2.1 2.1M4.5 19.5l2.1-2.1M17.4 6.6l2.1-2.1" stroke="#00fff2" stroke-width="1.2"/></svg>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">PF</div>
+      <div>
+        <h1>Plist → TextureAtlas XML (index.html)</h1>
+        <div class="meta">Paste a .plist (Apple Property List) and convert it to a TextureAtlas XML. Accurate mapping: textureRect -> x,y,width,height; spriteSize -> width/height; spriteSourceSize -> frameWidth/frameHeight; spriteOffset -> frameX/frameY.</div>
       </div>
-      <div class="title">
-        <div class="main">Plist → XML</div>
-        <div class="sub">frameX / frameY converter</div>
+      <div class="stars" title="5-star UI">
+        <div class="star">★</div>
+        <div class="star">★</div>
+        <div class="star">★</div>
+        <div class="star">★</div>
+        <div class="star">★</div>
       </div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <label for="plistIn">Paste PLIST (XML) here</label>
+        <textarea id="plistIn" placeholder="Paste your .plist XML here"></textarea>
+        <div style="height:10px"></div>
+        <div class="row controls">
+          <button id="convertBtn">Convert → XML</button>
+          <button id="clearBtn" class="small">Clear</button>
+          <label class="small" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="negateOffset"> negate offsets</label>
+          <label class="small" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="pretty"> pretty print</label>
+          <div style="flex:1"></div>
+          <div class="brandTag">Animatic • Futuristic • Newgrounds vibes</div>
+        </div>
+
+        <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.03);">
+
+        <label for="sheetUpload">Upload texture (optional) to preview animation</label>
+        <input type="file" id="sheetUpload" accept="image/*" class="small">
+        <div style="height:8px"></div>
+        <div class="row">
+          <button id="startAnim" class="small">Start Anim</button>
+          <button id="stopAnim" class="small">Stop Anim</button>
+          <label class="small" style="display:flex;align-items:center;gap:8px">fps <input id="fps" type="number" value="8" min="1" max="60" style="width:64px;padding:6px;border-radius:6px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:#eaffff"></label>
+        </div>
+
+      </section>
+
+      <aside class="card preview">
+        <label>Converted XML (read-only)</label>
+        <textarea id="xmlOut" readonly placeholder="Converted XML will appear here"></textarea>
+        <div class="row footer">
+          <button id="downloadBtn">Download .xml</button>
+          <button id="copyBtn" class="small">Copy to clipboard</button>
+          <div style="flex:1"></div>
+          <div class="small">Super accurate mapping — textureRect -> x,y,width,height</div>
+        </div>
+
+        <hr style="margin:10px 0;border:none;border-top:1px solid rgba(255,255,255,0.03);">
+
+        <label>Animatic Preview</label>
+        <div class="canvasWrap card" id="canvasWrap">
+          <canvas id="spriteCanvas" class="spriteCanvas"></canvas>
+        </div>
+        <div class="framesList card" id="framesList">No frames parsed yet</div>
+      </aside>
     </div>
-
-    <input type="text" id="imageNameInput" placeholder="Image name (optional)" class="input">
-    
-    <div id="dropZone">Drop your .plist file here</div>
-    
-    <textarea id="plistInput" class="plist-box input" placeholder="Paste your plist content here..."></textarea>
-
-    <div class="controls">
-      <button class="btn" id="convertBtn">Convert</button>
-      <button class="btn ghost" id="clearBtn">Clear</button>
-    </div>
-
-    <div class="theme-row">
-      <div class="theme-swatch" onclick="setTheme('blue')">Blue</div>
-      <div class="theme-swatch" onclick="setTheme('green')">Green</div>
-      <div class="theme-swatch" onclick="setTheme('red')">Red</div>
-    </div>
-
   </div>
-
-  <div class="panel right-col output-panel">
-    <div class="output-header">
-      <div>XML Output</div>
-      <div class="xml-toolbar">
-        <button class="copy-btn" id="copyBtn">Copy</button>
-        <button class="download-btn" id="downloadBtn">Download</button>
-      </div>
-    </div>
-    <pre id="xmlOutput" class="xml-output"></pre>
-  </div>
-
-</div>
-
-<div class="credits">Made with ❤️ by BGamer</div>
 
 <script>
-// Theme persistence
-function setTheme(t){
-  document.body.classList.remove('theme-blue','theme-green','theme-red');
-  document.body.classList.add('theme-'+t);
-  localStorage.setItem('plistTheme', t);
-}
-const savedTheme = localStorage.getItem('plistTheme');
-if(savedTheme) setTheme(savedTheme);
+// ---- Utilities: parse plist XML into JS object ----
+function parsePlistXml(xmlText){
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText,'application/xml');
+  const err = doc.querySelector('parsererror');
+  if(err) throw new Error('Invalid XML / plist');
 
-// Conversion logic
-function convertPlistToXmlBasic(plistText, imageName=''){
-    const regex = /<key>(.*?)<\/key>\s*<dict>\s*<key>x<\/key><integer>(\d+)<\/integer>\s*<key>y<\/key><integer>(\d+)<\/integer>\s*<key>width<\/key><integer>(\d+)<\/integer>\s*<key>height<\/key><integer>(\d+)<\/integer>/g;
-    let xml = `<TextureAtlas imagePath="${imageName || 'texture.png'}">\n`;
-    let match;
-    while(match = regex.exec(plistText)){
-        xml += `\t<SubTexture name="${match[1]}" x="${match[2]}" y="${match[3]}" width="${match[4]}" height="${match[5]}" />\n`;
+  function parseNode(node){
+    if(!node) return null;
+    const tag = node.tagName;
+    if(tag === 'dict'){
+      const obj = {};
+      const children = Array.from(node.children);
+      for(let i=0;i<children.length;i+=2){
+        const keyNode = children[i];
+        const valNode = children[i+1];
+        if(!keyNode||keyNode.tagName!=='key') continue;
+        const key = keyNode.textContent;
+        obj[key] = parseNode(valNode);
+      }
+      return obj;
     }
-    xml += `</TextureAtlas>`;
-    return xml;
+    if(tag === 'array'){
+      return Array.from(node.children).map(ch=>parseNode(ch));
+    }
+    if(tag === 'true') return true;
+    if(tag === 'false') return false;
+    // simple values
+    if(tag === 'string' || tag === 'date' || tag === 'data') return node.textContent || '';
+    if(tag === 'integer' || tag === 'real'){
+      const v = node.textContent || '0';
+      return (v.indexOf('.')>=0)?parseFloat(v):parseInt(v,10);
+    }
+    // fallback: if node contains a dict/array inside
+    if(node.children.length>0) return parseNode(node.children[0]);
+    return node.textContent;
+  }
+
+  const plist = doc.querySelector('plist');
+  if(!plist) throw new Error('No <plist> found');
+  // usually plist contains a top-level dict
+  const top = plist.children[0];
+  return parseNode(top);
 }
 
-function convertPlistToXml(plistText, imageName=''){
-    let xml = convertPlistToXmlBasic(plistText, imageName);
-    // simple beautifier: indent SubTexture lines
-    xml = xml.replace(/<SubTexture/g, '\t<SubTexture').replace(/<\/TextureAtlas>/, '</TextureAtlas>');
-    return xml;
+function parseTextureRect(s){
+  // format: {{x,y},{w,h}}
+  const m = /\{\{\s*(-?\d+)\s*,\s*(-?\d+)\s*\},\s*\{\s*(\d+)\s*,\s*(\d+)\s*\}\}/.exec(s);
+  if(!m) return null;
+  return {x:parseInt(m[1],10), y:parseInt(m[2],10), width:parseInt(m[3],10), height:parseInt(m[4],10)};
+}
+function parsePair(s){
+  // format: {a,b}
+  const m = /\{\s*(-?\d+)\s*,\s*(-?\d+)\s*\}/.exec(s);
+  if(!m) return null;
+  return {x:parseInt(m[1],10), y:parseInt(m[2],10)};
 }
 
-// Elements
-const plistInput = document.getElementById('plistInput');
-const xmlOutput = document.getElementById('xmlOutput');
+// ---- Conversion ----
+function convertPlistToTextureXml(plistObj, options={pretty:true,negateOffset:false}){
+  if(!plistObj || !plistObj.frames) throw new Error('Plist object missing frames');
+  const metadata = plistObj.metadata||{};
+  const imagePath = metadata.textureFileName || metadata.realTextureFileName || metadata.image || '';
+
+  const lines = [];
+  const push = (s)=>lines.push(s);
+  push('<?xml version="1.0" encoding="utf-8"?>');
+  push(`<TextureAtlas imagePath="${escapeXml(imagePath)}">`);
+  push('\t<!-- Converted using Plist → TextureAtlas Converter -->');
+
+  const frames = plistObj.frames;
+  for(const name in frames){
+    const node = frames[name];
+    // try to get needed fields
+    const spriteSize = node.spriteSize || node['spriteSize'] || null;
+    const spriteSourceSize = node.spriteSourceSize || node['spriteSourceSize'] || null;
+    const spriteOffset = node.spriteOffset || node['spriteOffset'] || null;
+    const textureRect = node.textureRect || node['textureRect'] || null;
+    const rotated = node.textureRotated || node['textureRotated'] || false;
+
+    // if these came in as strings, parse
+    let rect = null;
+    if(typeof textureRect === 'string') rect = parseTextureRect(textureRect);
+    else if(textureRect && textureRect.x!==undefined) rect = textureRect;
+
+    let size = null;
+    if(typeof spriteSize === 'string'){
+      const p = parsePair(spriteSize); if(p) size={width:p.x,height:p.y};
+    } else if(spriteSize && spriteSize.x!==undefined){ size={width:spriteSize.x,height:spriteSize.y}; }
+
+    let sourceSize = null;
+    if(typeof spriteSourceSize === 'string'){
+      const p = parsePair(spriteSourceSize); if(p) sourceSize={width:p.x,height:p.y};
+    } else if(spriteSourceSize && spriteSourceSize.x!==undefined){ sourceSize={width:spriteSourceSize.x,height:spriteSourceSize.y}; }
+
+    let offset = {x:0,y:0};
+    if(typeof spriteOffset === 'string'){
+      const p = parsePair(spriteOffset); if(p) offset={x:p.x,y:p.y};
+    } else if(spriteOffset && spriteOffset.x!==undefined){ offset={x:spriteOffset.x,y:spriteOffset.y}; }
+
+    if(options.negateOffset){ offset.x = -offset.x; offset.y = -offset.y; }
+
+    if(!rect){
+      // fallback: try to infer from size
+      rect = {x:0,y:0,width:size?size.width:0,height:size?size.height:0};
+    }
+    // frameX/Y map to offset.x/offset.y (this is the standard that many generators use)
+    const frameX = offset.x||0;
+    const frameY = offset.y||0;
+    const frameW = (sourceSize && sourceSize.width)?sourceSize.width:(size?size.width:rect.width);
+    const frameH = (sourceSize && sourceSize.height)?sourceSize.height:(size?size.height:rect.height);
+
+    // Build SubTexture element with attributes (include frameX/frameY/frameWidth/frameHeight only when available)
+    const attrs = [];
+    attrs.push(`name="${escapeXml(name)}"`);
+    attrs.push(`x="${rect.x}"`);
+    attrs.push(`y="${rect.y}"`);
+    attrs.push(`width="${rect.width}"`);
+    attrs.push(`height="${rect.height}"`);
+    // include frame attributes — keep them explicit even if zero to be "accurate"
+    attrs.push(`frameX="${frameX}"`);
+    attrs.push(`frameY="${frameY}"`);
+    attrs.push(`frameWidth="${frameW}"`);
+    attrs.push(`frameHeight="${frameH}"`);
+    if(rotated) attrs.push(`rotated="${rotated}"`);
+
+    push('\t<SubTexture '+attrs.join(' ')+'/>');
+  }
+
+  push('</TextureAtlas>');
+
+  if(options.pretty){
+    // join with newlines
+    return lines.join('\n');
+  } else return lines.join('');
+}
+
+function escapeXml(s){
+  if(!s && s!=='') return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ---- UI wiring ----
+const plistIn = document.getElementById('plistIn');
+const xmlOut = document.getElementById('xmlOut');
 const convertBtn = document.getElementById('convertBtn');
-const imageNameInput = document.getElementById('imageNameInput');
-const copyBtn = document.getElementById('copyBtn');
-const downloadBtn = document.getElementById('downloadBtn');
 const clearBtn = document.getElementById('clearBtn');
-const dropZone = document.getElementById('dropZone');
+const downloadBtn = document.getElementById('downloadBtn');
+const copyBtn = document.getElementById('copyBtn');
+const negateOffset = document.getElementById('negateOffset');
+const pretty = document.getElementById('pretty');
 
-// Convert button
-convertBtn.addEventListener('click', ()=>{
-    const text = plistInput.value.trim();
-    const imageNameManual = imageNameInput.value.trim();
-    if(text) xmlOutput.textContent = convertPlistToXml(text, imageNameManual);
+convertBtn.addEventListener('click',()=>{
+  const text = plistIn.value.trim();
+  if(!text){ alert('Paste a plist first'); return; }
+  try{
+    const obj = parsePlistXml(text);
+    const xml = convertPlistToTextureXml(obj,{pretty:pretty.checked,negateOffset:negateOffset.checked});
+    xmlOut.value = xml;
+    buildFramesList(obj);
+  }catch(e){
+    xmlOut.value = '// Error: ' + e.message;
+  }
 });
 
-// Live preview
-plistInput.addEventListener('input', () => convertBtn.click());
-imageNameInput.addEventListener('input', () => convertBtn.click());
+clearBtn.addEventListener('click',()=>{ plistIn.value=''; xmlOut.value=''; document.getElementById('framesList').innerText='No frames parsed yet'; stopAnim(); });
 
-// Copy output
-copyBtn.addEventListener('click', () => {
-    navigator.clipboard.writeText(xmlOutput.textContent).then(()=>{
-        copyBtn.classList.add('copied');
-        setTimeout(()=>copyBtn.classList.remove('copied'),300);
-    });
+downloadBtn.addEventListener('click',()=>{
+  const content = xmlOut.value || '';
+  const blob = new Blob([content],{type:'application/xml'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'textureAtlas.xml';
+  document.body.appendChild(a); a.click(); a.remove();
 });
 
-// Download XML
-downloadBtn.addEventListener('click', ()=>{
-    const blob = new Blob([xmlOutput.textContent], {type:'text/xml'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = (imageNameInput.value.trim() || 'texture') + '.xml';
-    a.click();
+copyBtn.addEventListener('click',()=>{
+  navigator.clipboard.writeText(xmlOut.value).then(()=>{ alert('Copied to clipboard'); }).catch(()=>{ alert('Copy failed'); });
 });
 
-// Clear
-clearBtn.addEventListener('click', ()=>{
-    plistInput.value = '';
-    xmlOutput.textContent = '';
-    imageNameInput.value = '';
+// ---- Animation preview support ----
+let frames = []; // parsed frames array
+let atlasImage = null;
+let animTimer = null;
+const canvas = document.getElementById('spriteCanvas');
+const ctx = canvas.getContext('2d');
+const fpsInput = document.getElementById('fps');
+document.getElementById('sheetUpload').addEventListener('change',async(e)=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const url = URL.createObjectURL(f);
+  const img = new Image();
+  img.onload = ()=>{ atlasImage = img; URL.revokeObjectURL(url); }
+  img.src = url;
 });
 
-// Drag & drop
-dropZone.addEventListener('dragover', e=>{ e.preventDefault(); dropZone.classList.add('hover'); });
-dropZone.addEventListener('dragleave', e=>{ dropZone.classList.remove('hover'); });
-dropZone.addEventListener('drop', e=>{
-    e.preventDefault(); dropZone.classList.remove('hover');
-    const file = e.dataTransfer.files[0];
-    if(file && /\.(plist|xml)$/i.test(file.name)){
-        const reader = new FileReader();
-        reader.onload = () => { plistInput.value = reader.result; convertBtn.click(); };
-        reader.readAsText(file);
-    }
-});
+document.getElementById('startAnim').addEventListener('click',()=>{ startAnim(); });
+document.getElementById('stopAnim').addEventListener('click',()=>{ stopAnim(); });
+
+function buildFramesList(plistObj){
+  frames = [];
+  const fl = document.getElementById('framesList');
+  if(!plistObj || !plistObj.frames){ fl.innerText='No frames parsed yet'; return; }
+  const frag = document.createDocumentFragment();
+  const keys = Object.keys(plistObj.frames);
+  keys.forEach((key,i)=>{
+    const node = plistObj.frames[key];
+    const rect = (typeof node.textureRect === 'string')? parseTextureRect(node.textureRect) : (node.textureRect||null);
+    const size = (typeof node.spriteSize === 'string')? parsePair(node.spriteSize) : (node.spriteSize||null);
+    frag.appendChild(Object.assign(document.createElement('div'),{textContent: key + (rect?` — x:${rect.x} y:${rect.y} w:${rect.width} h:${rect.height}`:''), style:'padding:6px;border-bottom:1px solid rgba(255,255,255,0.02);font-size:13px'}));
+    frames.push({name:key,rect:rect,size:size,node:node});
+  });
+  fl.innerHTML='';
+  fl.appendChild(frag);
+}
+
+function resizeCanvasForRect(rect){
+  if(!rect) return;
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+  canvas.style.width = rect.width+'px';
+  canvas.style.height = rect.height+'px';
+}
+
+function drawFrame(i){
+  if(!frames[i] || !frames[i].rect) return;
+  const r = frames[i].rect;
+  if(atlasImage){
+    // draw cropping from atlas
+    resizeCanvasForRect(r);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(atlasImage, r.x, r.y, r.width, r.height, 0, 0, canvas.width, canvas.height);
+  }else{
+    // placeholder
+    resizeCanvasForRect({width:200,height:200});
+    ctx.fillStyle = '#081018'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#9ff'; ctx.font='14px monospace'; ctx.fillText(frames[i].name,8,20);
+  }
+}
+
+function startAnim(){
+  if(frames.length===0){ alert('No frames parsed — convert a plist first'); return; }
+  stopAnim();
+  let idx=0;
+  const fps = Math.max(1,parseInt(fpsInput.value||8,10));
+  animTimer = setInterval(()=>{ drawFrame(idx); idx = (idx+1)%frames.length; }, 1000/fps);
+}
+function stopAnim(){ if(animTimer){ clearInterval(animTimer); animTimer=null; } }
+
+// small helpers to avoid XSS in attributes
+function safeAttr(s){ return String(s).replace(/"/g,''); }
+
+// handle paste from clipboard
+plistIn.addEventListener('paste', (e)=>{ /* allow default */ });
+
 </script>
 </body>
 </html>
